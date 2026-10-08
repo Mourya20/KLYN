@@ -43,6 +43,25 @@ Testcontainers has been configured to use the following Docker images:
 
 Please review the tags of the used images and set them to the same as you're running in production.
 
+### KLYN Stage 2 authentication
+
+The API provides:
+
+* `POST /api/auth/register` to create a user with a BCrypt-hashed password.
+* `POST /api/auth/login` to authenticate with an email and password and receive a JWT bearer token.
+* `GET /api/users/me` to return the authenticated user's safe profile.
+
+Authentication is stateless. Send the login token as `Authorization: Bearer <token>`. Users receive the `USER` role; the `ADMIN` role is available for future protected operations. Health and Swagger/OpenAPI endpoints remain public, while application endpoints are protected by default.
+
+Configure `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, and optionally `JWT_EXPIRATION` in the environment. `JWT_SECRET` must be at least 32 characters long. Spring Boot does not automatically load a `.env` file; use operating-system variables, an IDE run configuration, or a deployment secret store. Production uses MySQL, while tests use an isolated in-memory H2 database through the `test` profile:
+
+```text
+mvnw.cmd clean test
+mvnw.cmd clean package
+```
+
+OpenAPI is available at `/swagger-ui.html`; the `bearerAuth` scheme supports testing protected endpoints with a JWT.
+
 ### Maven Parent overrides
 
 Due to Maven's design, elements are inherited from the parent POM to the project POM.

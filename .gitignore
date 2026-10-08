@@ -1,4 +1,19 @@
 target/
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.7z
+*.rar
+*.tar
+*.gz
+*.tgz
+*.bz2
+*.xz
+*.iso
+dependency-reduced-pom.xml
+.flattened-pom.xml
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -37,4 +52,7 @@ Thumbs.db
 *.log
 
 .env
+.env.*
+!.env.example
 application-local.properties
+application-*.local.properties
