@@ -13,6 +13,9 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import com.klyn.platform.marketdata.MarketDataProviderException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -30,6 +33,9 @@ public class GlobalExceptionHandler {
 	ResponseEntity<ApiError> validation(MethodArgumentNotValidException exception, HttpServletRequest request) {
 		String message = exception.getBindingResult().getFieldErrors().stream()
 				.map(FieldError::getDefaultMessage).collect(Collectors.joining(", "));
+		if (message == null || message.isBlank()) {
+			message = "Validation failed";
+		}
 		return response(HttpStatus.BAD_REQUEST, message, request);
 	}
 
@@ -38,9 +44,24 @@ public class GlobalExceptionHandler {
 		return response(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
 	}
 
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	ResponseEntity<ApiError> typeMismatch(MethodArgumentTypeMismatchException exception, HttpServletRequest request) {
+		return response(HttpStatus.BAD_REQUEST, "Invalid value for parameter '" + exception.getName() + "'", request);
+	}
+
+	@ExceptionHandler(IllegalArgumentException.class)
+	ResponseEntity<ApiError> illegalArgument(IllegalArgumentException exception, HttpServletRequest request) {
+		return response(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
+	}
+
 	@ExceptionHandler(AuthenticationException.class)
 	ResponseEntity<ApiError> authentication(AuthenticationException exception, HttpServletRequest request) {
 		return response(HttpStatus.UNAUTHORIZED, "Invalid email or password", request);
+	}
+
+	@ExceptionHandler(MarketDataProviderException.class)
+	ResponseEntity<ApiError> marketDataProvider(MarketDataProviderException exception, HttpServletRequest request) {
+		return response(HttpStatus.BAD_GATEWAY, "Market data provider request failed", request);
 	}
 
 	private ResponseEntity<ApiError> response(HttpStatus status, String message, HttpServletRequest request) {
