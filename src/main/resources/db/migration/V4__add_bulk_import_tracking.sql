@@ -15,7 +15,7 @@ CREATE TABLE bulk_import_jobs (
     id BIGINT NOT NULL AUTO_INCREMENT,
     exchange_code VARCHAR(20) NOT NULL,
     source_file_name VARCHAR(255) NOT NULL,
-    status VARCHAR(20) NOT NULL,
+    status VARCHAR(30) NOT NULL,
     total_instruments INT NOT NULL DEFAULT 0,
     completed INT NOT NULL DEFAULT 0,
     pending INT NOT NULL DEFAULT 0,

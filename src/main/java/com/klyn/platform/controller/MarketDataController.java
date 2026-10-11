@@ -59,8 +59,9 @@ public class MarketDataController {
 	@Operation(summary = "Process a controlled batch of mapped instruments")
 	@SecurityRequirement(name = "bearerAuth")
 	public BulkImportStatusResponse runBulkImport(@PathVariable Long jobId,
-			@RequestParam(required = false) Integer limit) {
-		return bulkMarketDataImportService.run(jobId, limit);
+			@RequestParam(required = false) Integer limit,
+			@RequestParam(defaultValue = "false") boolean retryFailed) {
+		return bulkMarketDataImportService.run(jobId, limit, retryFailed);
 	}
 
 	@GetMapping("/bulk-import/{jobId}")
