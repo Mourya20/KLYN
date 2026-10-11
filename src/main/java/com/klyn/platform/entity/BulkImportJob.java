@@ -29,7 +29,7 @@ public class BulkImportJob {
 	private String sourceFileName;
 
 	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, length = 20)
+	@Column(nullable = false, length = 30)
 	private BulkImportJobStatus status = BulkImportJobStatus.PENDING;
 
 	@Column(nullable = false)

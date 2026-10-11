@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import com.klyn.platform.config.AlphaVantageProperties;
 
@@ -36,22 +37,27 @@ public class AlphaVantageMarketDataProvider implements MarketDataProvider {
 	@Override
 	public MarketDataFetchResult fetchDailySeries(String symbol, String exchangeCode) {
 		String normalized = normalizeSymbol(symbol);
-		String response = restClient.get()
-				.uri(uriBuilder -> uriBuilder
-						.queryParam("function", "TIME_SERIES_DAILY")
-						.queryParam("symbol", normalized)
-						.queryParam("outputsize", properties.getOutputSize())
-						.queryParam("apikey", properties.getApiKey())
-						.build())
-				.retrieve()
-				.onStatus(HttpStatusCode::is4xxClientError, (request, responseEntity) -> {
-					boolean rateLimited = responseEntity.getStatusCode().value() == 429;
-					throw new MarketDataProviderException("Alpha Vantage rejected the symbol request. Verify the configured symbol and API key.", rateLimited);
-				})
-				.onStatus(HttpStatusCode::is5xxServerError, (request, responseEntity) -> {
-					throw new MarketDataProviderException("Alpha Vantage is currently unavailable. Please retry later.");
-				})
-				.body(String.class);
+		String response;
+		try {
+			response = restClient.get()
+					.uri(uriBuilder -> uriBuilder
+							.queryParam("function", "TIME_SERIES_DAILY")
+							.queryParam("symbol", normalized)
+							.queryParam("outputsize", properties.getOutputSize())
+							.queryParam("apikey", properties.getApiKey())
+							.build())
+					.retrieve()
+					.onStatus(HttpStatusCode::is4xxClientError, (request, responseEntity) -> {
+						boolean rateLimited = responseEntity.getStatusCode().value() == 429;
+						throw new MarketDataProviderException("Alpha Vantage rejected the symbol request. Verify the configured symbol and API key.", rateLimited);
+					})
+					.onStatus(HttpStatusCode::is5xxServerError, (request, responseEntity) -> {
+						throw new MarketDataProviderException("Alpha Vantage is currently unavailable. Please retry later.");
+					})
+					.body(String.class);
+		} catch (RestClientException exception) {
+			throw new MarketDataProviderException("Alpha Vantage request failed. Please retry later.");
+		}
 		return parseResponse(response, normalized);
 	}
 

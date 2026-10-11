@@ -5,5 +5,6 @@ public enum BulkImportJobStatus {
 	RUNNING,
 	PAUSED,
 	COMPLETED,
+	COMPLETED_WITH_SKIPPED,
 	FAILED
 }
