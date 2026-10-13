@@ -14,7 +14,7 @@ public class OpenApiConfig {
 	@Bean
 	OpenAPI klynOpenAPI() {
 		return new OpenAPI()
-				.info(new Info().title("KLYN API").version("Stage 3").description("Market data and authenticated user APIs for the KLYN platform."))
+				.info(new Info().title("KLYN API").version("Stage 2"))
 				.components(new Components().addSecuritySchemes("bearerAuth",
 						new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")));
 	}
