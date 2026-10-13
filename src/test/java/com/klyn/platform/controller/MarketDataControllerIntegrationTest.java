@@ -104,7 +104,7 @@ class MarketDataControllerIntegrationTest {
 	mockMvc.perform(post("/api/market-data/bulk-import/" + jobId + "/run").param("limit", "1")
 		.header("Authorization", "Bearer " + token))
 	    .andExpect(status().isOk())
-	    .andExpect(jsonPath("$.status").value("COMPLETED_WITH_SKIPPED"))
+	    .andExpect(jsonPath("$.status").value("COMPLETED"))
 	    .andExpect(jsonPath("$.completed").value(1))
 	    .andExpect(jsonPath("$.recordsSaved").value(1))
 	    .andExpect(jsonPath("$.mostRecentImportedTradingDate").value("2026-10-09"));

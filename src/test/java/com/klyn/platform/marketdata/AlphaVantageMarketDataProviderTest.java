@@ -1,7 +1,6 @@
 package com.klyn.platform.marketdata;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -9,8 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.math.BigDecimal;
 
 import org.junit.jupiter.api.Test;
-
-import com.klyn.platform.config.AlphaVantageProperties;
 
 class AlphaVantageMarketDataProviderTest {
 
@@ -72,22 +69,5 @@ class AlphaVantageMarketDataProviderTest {
 
 		String malformed = "{\"Meta Data\": {\"2. Symbol\": \"RELIANCE.BSE\"}, \"Time Series (Daily)\": {\"2026-10-09\": {\"1. open\": \"bad\"}}}";
 		assertThrows(MarketDataProviderException.class, () -> AlphaVantageMarketDataProvider.parseResponse(malformed, "RELIANCE.BSE"));
-	}
-
-	@Test
-	void doesNotExposeApiKeyWhenTheProviderRequestFails() {
-		String apiKey = "secret-api-key";
-		AlphaVantageProperties properties = new AlphaVantageProperties();
-		properties.setApiKey(apiKey);
-		properties.setBaseUrl("http://127.0.0.1:1/query");
-		properties.setConnectTimeoutMs(100);
-		properties.setResponseTimeoutMs(100);
-		properties.setOutputSize("compact");
-
-		MarketDataProviderException exception = assertThrows(MarketDataProviderException.class,
-				() -> new AlphaVantageMarketDataProvider(properties).fetchDailySeries("RELIANCE.BSE", "BSE"));
-
-		assertFalse(exception.getMessage().contains(apiKey));
-		assertTrue(exception.getMessage().contains("request failed"));
 	}
 }

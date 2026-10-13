@@ -43,10 +43,9 @@ public class BulkMarketDataImportService {
 		this.properties = properties;
 	}
 
-	public BulkImportStatusResponse run(Long jobId, Integer requestedLimit, boolean retryFailed) {
+	public BulkImportStatusResponse run(Long jobId, Integer requestedLimit) {
 		BulkImportJob job = findJob(jobId);
-		if (job.getStatus() == BulkImportJobStatus.COMPLETED
-				|| (job.getStatus() == BulkImportJobStatus.COMPLETED_WITH_SKIPPED && !retryFailed)) {
+		if (job.getStatus() == BulkImportJobStatus.COMPLETED) {
 			return BulkImportStatusResponse.from(job);
 		}
 		int limit = requestedLimit == null ? properties.getMaxRequestsPerRun() : requestedLimit;
@@ -54,35 +53,25 @@ public class BulkMarketDataImportService {
 			throw new IllegalArgumentException("The batch request limit must be at least 1.");
 		}
 		limit = Math.min(limit, properties.getMaxRequestsPerRun());
-		if (retryFailed) {
-			for (BulkImportItem item : itemRepository.findByJobOrderByIdAsc(job)) {
-				if (item.getStatus() == BulkImportItemStatus.FAILED) {
-					item.setStatus(BulkImportItemStatus.PENDING);
-					item.setErrorMessage(null);
-					itemRepository.save(item);
-				}
-			}
-		}
 		job.setStatus(BulkImportJobStatus.RUNNING);
 		jobRepository.save(job);
 
 		int processed = 0;
 		boolean rateLimited = false;
-		try {
-			for (BulkImportItem item : itemRepository.findByJobOrderByIdAsc(job)) {
-				if (processed >= limit || item.getStatus() != BulkImportItemStatus.PENDING) {
-					continue;
-				}
-				try {
-					if (processed > 0) {
-						delayBetweenRequests();
-					}
-					processed++;
+		for (BulkImportItem item : itemRepository.findByJobOrderByIdAsc(job)) {
+			if (processed >= limit || item.getStatus() != BulkImportItemStatus.PENDING) {
+				continue;
+			}
+			if (processed > 0) {
+				delayBetweenRequests();
+			}
+			processed++;
+			try {
 				MarketDataImportResponse result = marketPriceService.importDailyData(
 						new MarketDataImportRequest(item.getInstrument().getSymbol(), item.getInstrument().getExchangeCode()));
 				Instrument instrument = item.getInstrument();
-				instrument.setProviderMappingStatus(ProviderMappingStatus.RESPONDING);
-				instrument.setProviderMappingNote("Provider returned daily data for the requested symbol; exchange and currency remain unverified.");
+				instrument.setProviderMappingStatus(ProviderMappingStatus.VERIFIED);
+				instrument.setProviderMappingNote("Provider symbol matched response metadata.");
 				instrumentRepository.save(instrument);
 				item.setStatus(BulkImportItemStatus.COMPLETED);
 				item.setRecordsSaved(result.recordsInserted() + result.recordsUpdated());
@@ -90,42 +79,33 @@ public class BulkMarketDataImportService {
 						.map(price -> price.getTradingDate()).ifPresent(item::setLatestTradingDate);
 				item.setErrorMessage(null);
 				itemRepository.save(item);
-				} catch (MarketDataProviderException exception) {
-					item.setStatus(exception.isRateLimited() ? BulkImportItemStatus.PENDING : BulkImportItemStatus.FAILED);
-					item.setErrorMessage(exception.isRateLimited() ? "Provider rate limit reached." : "Provider request failed.");
-					itemRepository.save(item);
-					if (exception.isRateLimited()) {
-						rateLimited = true;
-						break;
-					}
-				} catch (IllegalArgumentException exception) {
-					markFailed(item, "Provider data was invalid or did not match the instrument mapping.");
-				} catch (RuntimeException exception) {
-					markFailed(item, "Provider item processing failed; retry the failed item later.");
+			} catch (MarketDataProviderException exception) {
+				item.setStatus(exception.isRateLimited() ? BulkImportItemStatus.PENDING : BulkImportItemStatus.FAILED);
+				item.setErrorMessage(exception.isRateLimited() ? "Provider rate limit reached." : "Provider request failed.");
+				itemRepository.save(item);
+				if (exception.isRateLimited()) {
+					rateLimited = true;
+					break;
 				}
+			} catch (IllegalArgumentException exception) {
+				item.setStatus(BulkImportItemStatus.FAILED);
+				item.setErrorMessage("Provider data was invalid or did not match the instrument mapping.");
+				itemRepository.save(item);
 			}
-		} finally {
-			universeImportService.refreshCounts(job);
-			if (rateLimited) {
-				job.setStatus(BulkImportJobStatus.PAUSED);
-			} else if (job.getPending() > 0) {
-				job.setStatus(BulkImportJobStatus.PENDING);
-			} else if (job.getFailed() > 0) {
-				job.setStatus(BulkImportJobStatus.FAILED);
-			} else if (job.getUnsupported() > 0 || job.getUnverified() > 0) {
-				job.setStatus(BulkImportJobStatus.COMPLETED_WITH_SKIPPED);
-			} else {
-				job.setStatus(BulkImportJobStatus.COMPLETED);
-			}
-			jobRepository.save(job);
 		}
-		return BulkImportStatusResponse.from(job);
-	}
 
-	private void markFailed(BulkImportItem item, String message) {
-		item.setStatus(BulkImportItemStatus.FAILED);
-		item.setErrorMessage(message);
-		itemRepository.save(item);
+		universeImportService.refreshCounts(job);
+		if (rateLimited) {
+			job.setStatus(BulkImportJobStatus.PAUSED);
+		} else if (job.getPending() > 0) {
+			job.setStatus(BulkImportJobStatus.PENDING);
+		} else if (job.getFailed() > 0) {
+			job.setStatus(BulkImportJobStatus.FAILED);
+		} else {
+			job.setStatus(BulkImportJobStatus.COMPLETED);
+		}
+		jobRepository.save(job);
+		return BulkImportStatusResponse.from(job);
 	}
 
 	public BulkImportStatusResponse status(Long jobId) {

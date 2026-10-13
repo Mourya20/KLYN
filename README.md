@@ -46,7 +46,7 @@ GET  /api/companies/{id}/latest-price
 POST /api/companies                         (ADMIN)
 POST /api/market-data/import                 (ADMIN)
 POST /api/market-data/bulk-import/nse        (ADMIN, multipart file upload)
-POST /api/market-data/bulk-import/{jobId}/run (ADMIN, optional `limit` and `retryFailed`)
+POST /api/market-data/bulk-import/{jobId}/run (ADMIN)
 GET  /api/market-data/bulk-import/{jobId}    (ADMIN)
 ```
 
@@ -72,16 +72,15 @@ Download the current official NSE equity listing CSV from the NSE India reports/
 curl -X POST http://localhost:8080/api/market-data/bulk-import/nse -H "Authorization: Bearer <ADMIN_JWT>" -F "file=@nse-equity-list.csv"
 ```
 
-2. Run at most the configured number of provider requests. Set `retryFailed=true` to retry failed items:
+2. Run at most the configured number of provider requests:
 
 ```cmd
 curl -X POST "http://localhost:8080/api/market-data/bulk-import/<JOB_ID>/run?limit=5" -H "Authorization: Bearer <ADMIN_JWT>"
-curl -X POST "http://localhost:8080/api/market-data/bulk-import/<JOB_ID>/run?limit=5&retryFailed=true" -H "Authorization: Bearer <ADMIN_JWT>"
 ```
 
-3. Poll the status endpoint. A rate limit changes the job to `PAUSED` and leaves the current item `pending`; rerun it later. Jobs with only `unverified` or `unsupported` items finish as `COMPLETED_WITH_SKIPPED`. Successful provider responses set the instrument mapping to `RESPONDING`, not `VERIFIED`; exchange and currency verification requires a separately reviewed mapping. Completed instruments are not requested again. The default controls are `market-data.batch.max-requests-per-run=5` and `market-data.batch.delay-between-requests-ms=12000`, matching Alpha Vantage's commonly documented free-tier limit. Confirm the quota for the configured account before changing them.
+3. Poll the status endpoint. A rate limit changes the job to `PAUSED` and leaves the current item `pending`; rerun it later. Completed instruments are not requested again. The default controls are `market-data.batch.max-requests-per-run=5` and `market-data.batch.delay-between-requests-ms=12000`, matching Alpha Vantage's commonly documented free-tier limit. Confirm the quota for the configured account before changing them.
 
-For an existing database, run [V4__add_bulk_import_tracking.sql](src/main/resources/db/migration/V4__add_bulk_import_tracking.sql) after V3. V4 adds provider mapping state and the resumable job/item ledger. If V4 was already applied, run [V5__expand_stage3_status_values.sql](src/main/resources/db/migration/V5__expand_stage3_status_values.sql) before using the new job status. These SQL files are manual migrations because this project does not install a migration runner.
+For an existing database, run [V4__add_bulk_import_tracking.sql](src/main/resources/db/migration/V4__add_bulk_import_tracking.sql) after V3. V4 adds provider mapping state and the resumable job/item ledger. These SQL files are manual migrations because this project does not install a migration runner.
 
 Never place real API keys, database passwords, JWT secrets, or `.env` files in source control. `.env.example` contains placeholders only.
 
